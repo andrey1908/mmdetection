@@ -33,6 +33,10 @@ def parse_args():
         default=1,
         help='number of gpus to use '
         '(only applicable to non-distributed training)')
+    parser.add_argument(
+        '-av-gpus', '--available-gpus',
+        type=str,
+    )
     parser.add_argument('--seed', type=int, default=None, help='random seed')
     parser.add_argument(
         '--deterministic',
@@ -57,6 +61,7 @@ def parse_args():
 
 def main():
     args = parse_args()
+    os.environ['CUDA_VISIBLE_DEVICES'] = args.available_gpus
 
     cfg = Config.fromfile(args.config)
     # set cudnn_benchmark
