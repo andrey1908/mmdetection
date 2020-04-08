@@ -12,6 +12,10 @@ from mmdet.core import (DistEvalHook, DistOptimizerHook, Fp16OptimizerHook,
 from mmdet.datasets import build_dataloader, build_dataset
 from mmdet.utils import get_root_logger
 
+from .hooks import CustomLog, DefrostBackbone
+
+import os
+
 
 def set_random_seed(seed, deterministic=False):
     """Set random seed.
@@ -216,6 +220,13 @@ def _non_dist_train(model,
         cfg.work_dir,
         logger=logger,
         meta=meta)
+    frozen = cfg.freeze if hasattr(cfg, 'frozen') else 0
+    # log hook
+    custom_log = CustomLog(cfg.data.imgs_per_gpu, frozen, os.path.join(cfg.work_dir, 'log.txt'))
+    runner.register_hook(custom_log)
+    # defrost backbone hook
+    defrost_backbone = DefrostBackbone(frozen)
+    runner.register_hook(defrost_backbone)
     # an ugly walkaround to make the .log and .log.json filenames the same
     runner.timestamp = timestamp
     # fp16 setting
