@@ -21,6 +21,29 @@ except ImportError:
 
 
 @PIPELINES.register_module
+class RemoveSmallBoxes(object):
+
+    def __init__(self, min_box_area):
+        self.min_box_area = min_box_area
+
+    def __call__(self, results):
+        for key in results.get('bbox_fields', []):
+            bboxes = results[key]
+            w = bboxes[:, 2] - bboxes[:, 0]
+            h = bboxes[:, 3] - bboxes[:, 1]
+            mask = (w * h) >= self.min_box_area
+            results[key] = bboxes[mask]
+            if key == 'gt_bboxes':
+                results['gt_labels'] = results['gt_labels'][mask]
+        return results
+
+    def __repr__(self):
+        repr_str = self.__class__.__name__
+        repr_str += '(img_scale={})'.format(self.min_box_area)
+        return repr_str
+
+
+@PIPELINES.register_module
 class Resize(object):
     """Resize images & bbox & mask.
 
