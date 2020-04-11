@@ -459,12 +459,22 @@ class ResNet(nn.Module):
             for m in [self.conv1, self.norm1]:
                 for param in m.parameters():
                     param.requires_grad = False
+        else:
+            self.norm1.train()
+            for m in [self.conv1, self.norm1]:
+                for param in m.parameters():
+                    param.requires_grad = True
 
         for i in range(1, self.frozen_stages + 1):
             m = getattr(self, 'layer{}'.format(i))
             m.eval()
             for param in m.parameters():
                 param.requires_grad = False
+        for i in range(max(self.frozen_stages + 1, 1), self.num_stages + 1):
+            m = getattr(self, 'layer{}'.format(i))
+            m.train()
+            for param in m.parameters():
+                param.requires_grad = True
 
     def init_weights(self, pretrained=None):
         if isinstance(pretrained, str):
