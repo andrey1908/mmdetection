@@ -13,10 +13,16 @@ class CustomLog(Hook):
         if self.out_file:
             self.out = open(self.out_file, 'a')
         if self.when_defrost > 0:
-            log_line = 'Freezing backbone'
-            print(log_line)
-            if self.out:
-                self.out.write(log_line + '\n')
+            if runner.epoch == 0:
+                log_line = 'Freezing backbone'
+                print(log_line)
+                if self.out:
+                    self.out.write(log_line + '\n')
+            if runner.epoch == self.when_defrost:
+                log_line = 'Defrosting backbone'
+                print(log_line)
+                if self.out:
+                    self.out.write(log_line + '\n')
 
     def after_train_iter(self, runner):
         if self.avg_loss < 0:
@@ -30,7 +36,11 @@ class CustomLog(Hook):
             self.out.write(log_line + '\n')
 
     def after_train_epoch(self, runner):
-        if ((runner.epoch+1) >= self.when_defrost) and (self.when_defrost > 0):
+        log_line = 'Saving weights (epoch {})'.format(runner.epoch+1)
+        print(log_line)
+        if self.out:
+            self.out.write(log_line + '\n')
+        if (runner.epoch+1) == self.when_defrost:
             log_line = 'Defrosting backbone'
             print(log_line)
             if self.out:
@@ -42,13 +52,14 @@ class CustomLog(Hook):
 
 
 class DefrostBackbone(Hook):
-    def __init__(self, when_defrost=0):
+    def __init__(self, when_defrost, defrosted_stages=-1):
         self.when_defrost = when_defrost
+        self.defrosted_stages = defrosted_stages
 
     def before_run(self, runner):
-        if self.when_defrost == 0:
-            runner.model.module.backbone.frozen_stages = 1
+        if runner.epoch >= self.when_defrost:
+            runner.model.module.backbone.frozen_stages = self.defrosted_stages
 
     def after_train_epoch(self, runner):
         if (runner.epoch+1) >= self.when_defrost:
-            runner.model.module.backbone.frozen_stages = 1
+            runner.model.module.backbone.frozen_stages = self.defrosted_stages

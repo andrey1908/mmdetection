@@ -220,13 +220,15 @@ def _non_dist_train(model,
         cfg.work_dir,
         logger=logger,
         meta=meta)
-    frozen = cfg.frozen if hasattr(cfg, 'frozen') else 0
+    when_defrost = cfg.when_defrost if hasattr(cfg, 'when_defrost') else 0
     # log hook
-    custom_log = CustomLog(cfg.data.imgs_per_gpu, frozen, os.path.join(cfg.work_dir, 'log.txt'))
+    custom_log = CustomLog(cfg.data.imgs_per_gpu, when_defrost, os.path.join(cfg.work_dir, 'log.txt'))
     runner.register_hook(custom_log)
     # defrost backbone hook
-    defrost_backbone = DefrostBackbone(frozen)
-    runner.register_hook(defrost_backbone)
+    if when_defrost > 0:
+        defrosted_stages = cfg.defrosted_stages if hasattr(cfg, 'defrosted_stages') else -1
+        defrost_backbone = DefrostBackbone(when_defrost, defrosted_stages)
+        runner.register_hook(defrost_backbone)
     # an ugly walkaround to make the .log and .log.json filenames the same
     runner.timestamp = timestamp
     # fp16 setting
