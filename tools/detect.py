@@ -8,7 +8,8 @@ def build_parser():
     parser.add_argument('-cfg', '--config-file', required=True, type=str)
     parser.add_argument('-ch', '--checkpoint-file', required=True, type=str)
     parser.add_argument('-img', '--image-file', required=True, type=str)
-    parser.add_argument('-thr', '--threshold', type=int, default=0.5)
+    parser.add_argument('-out', '--out-file', type=str)
+    parser.add_argument('-thr', '--threshold', type=float, default=0.5)
     parser.add_argument('-gpu', '--gpu', type=int, default=0)
     return parser
 
@@ -31,4 +32,4 @@ if __name__ == '__main__':
     kwargs.pop('gpu')
     detections, classes = detect(args.config_file, args.checkpoint_file, args.image_file, return_classes=True)
     print(len(classes))
-    show_result(args.image_file, detections, classes, score_thr=args.threshold)
+    show_result(args.image_file, detections, classes, score_thr=args.threshold, out_file=args.out_file)
