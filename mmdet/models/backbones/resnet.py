@@ -516,7 +516,7 @@ class ResNet(nn.Module):
         return tuple(outs)
 
     def train(self, mode=True):
-        super(ResNet, self).train(mode)
+        super(ResNet, self).train(mode)  # this line switch all BatchNorms to respective mode
         self._freeze_stages()
         if mode and self.norm_eval:
             for m in self.modules():
