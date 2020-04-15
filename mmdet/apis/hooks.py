@@ -1,4 +1,4 @@
-from mmcv.runner.hooks import Hook
+from mmcv.runner.hooks import HOOKS, Hook, LrUpdaterHook
 
 
 class CustomLog(Hook):
@@ -63,3 +63,26 @@ class DefrostBackbone(Hook):
     def after_train_epoch(self, runner):
         if (runner.epoch+1) >= self.when_defrost:
             runner.model.module.backbone.frozen_stages = self.defrosted_stages
+
+
+@HOOKS.register_module
+class MultistepsLrUpdaterHook(LrUpdaterHook):
+    def __init__(self, steps, scales, **kwargs):
+        assert isinstance(steps, (list, tuple))
+        assert isinstance(scales, (list, tuple))
+        assert len(steps) == len(scales)
+        for s in steps:
+            assert isinstance(s, int) and s > 0
+        for g in scales:
+            assert g > 0
+        self.steps = steps
+        self.scales = scales
+        super(MultistepsLrUpdaterHook, self).__init__(**kwargs)
+
+    def get_lr(self, runner, base_lr):
+        progress = runner.epoch if self.by_epoch else runner.iter
+        factor = 1
+        for s, g in zip(self.steps, self.scales):
+            if progress >= s:
+                factor *= g
+        return base_lr * factor
