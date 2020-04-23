@@ -18,11 +18,6 @@ class CustomLog(Hook):
                 print(log_line)
                 if self.out:
                     self.out.write(log_line + '\n')
-            if runner.epoch == self.when_defrost:
-                log_line = 'Defrosting backbone'
-                print(log_line)
-                if self.out:
-                    self.out.write(log_line + '\n')
 
     def after_train_iter(self, runner):
         if self.avg_loss < 0:
