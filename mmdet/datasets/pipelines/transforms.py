@@ -27,19 +27,19 @@ class RemoveSmallBoxes(object):
         self.min_box_area = min_box_area
 
     def __call__(self, results):
-        for key in results.get('bbox_fields', []):
-            bboxes = results[key]
-            w = bboxes[:, 2] - bboxes[:, 0]
-            h = bboxes[:, 3] - bboxes[:, 1]
-            mask = (w * h) >= self.min_box_area
-            results[key] = bboxes[mask]
-            if key == 'gt_bboxes':
-                results['gt_labels'] = results['gt_labels'][mask]
+        bboxes = results['gt_bboxes']
+        w = bboxes[:, 2] - bboxes[:, 0] + 1
+        h = bboxes[:, 3] - bboxes[:, 1] + 1
+        mask = (w * h) >= self.min_box_area
+        if True not in mask:
+            return None
+        results['gt_bboxes'] = bboxes[mask]
+        results['gt_labels'] = results['gt_labels'][mask]
         return results
 
     def __repr__(self):
         repr_str = self.__class__.__name__
-        repr_str += '(img_scale={})'.format(self.min_box_area)
+        repr_str += '(min_box_area={})'.format(self.min_box_area)
         return repr_str
 
 
@@ -498,51 +498,51 @@ class PhotoMetricDistortion(object):
         self.hue_delta = hue_delta
 
     def __call__(self, results):
-        img = results['img']
+        img = results['img'].astype(dtype=np.single)
         # random brightness
-        if random.randint(2):
-            delta = random.uniform(-self.brightness_delta,
-                                   self.brightness_delta)
+        if True:
+            delta = random.uniform(-self.brightness_delta, self.brightness_delta)
             img += delta
+            np.clip(img, 0, 255, out=img)
 
         # mode == 0 --> do random contrast first
         # mode == 1 --> do random contrast last
         mode = random.randint(2)
         if mode == 1:
-            if random.randint(2):
-                alpha = random.uniform(self.contrast_lower,
-                                       self.contrast_upper)
+            if True:
+                alpha = random.uniform(self.contrast_lower, self.contrast_upper)
                 img *= alpha
+                np.clip(img, 0, 255, out=img)
 
         # convert color from BGR to HSV
         img = mmcv.bgr2hsv(img)
 
         # random saturation
-        if random.randint(2):
-            img[..., 1] *= random.uniform(self.saturation_lower,
-                                          self.saturation_upper)
+        if True:
+            img[..., 1] *= random.uniform(self.saturation_lower, self.saturation_upper)
 
         # random hue
-        if random.randint(2):
+        if True:
             img[..., 0] += random.uniform(-self.hue_delta, self.hue_delta)
             img[..., 0][img[..., 0] > 360] -= 360
             img[..., 0][img[..., 0] < 0] += 360
 
         # convert color from HSV to BGR
         img = mmcv.hsv2bgr(img)
+        np.clip(img, 0, 255, out=img)
 
         # random contrast
         if mode == 0:
-            if random.randint(2):
-                alpha = random.uniform(self.contrast_lower,
-                                       self.contrast_upper)
+            if True:
+                alpha = random.uniform(self.contrast_lower, self.contrast_upper)
                 img *= alpha
+                np.clip(img, 0, 255, out=img)
 
         # randomly swap channels
-        if random.randint(2):
+        if True:
             img = img[..., random.permutation(3)]
 
-        results['img'] = img
+        results['img'] = img.astype(dtype=np.uint8)
         return results
 
     def __repr__(self):
