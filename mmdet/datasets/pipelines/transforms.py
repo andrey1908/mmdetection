@@ -491,10 +491,12 @@ class PhotoMetricDistortion(object):
                  brightness_delta=32,
                  contrast_range=(0.5, 1.5),
                  saturation_range=(0.5, 1.5),
+                 exposure_range=(0.5, 1.5),
                  hue_delta=18):
         self.brightness_delta = brightness_delta
         self.contrast_lower, self.contrast_upper = contrast_range
         self.saturation_lower, self.saturation_upper = saturation_range
+        self.exposure_lower, self.exposure_upper = exposure_range
         self.hue_delta = hue_delta
 
     def __call__(self, results):
@@ -520,6 +522,10 @@ class PhotoMetricDistortion(object):
         # random saturation
         if True:
             img[..., 1] *= random.uniform(self.saturation_lower, self.saturation_upper)
+
+        # random exposure
+        if True:
+            img[..., 2] *= random.uniform(self.exposure_lower, self.exposure_upper)
 
         # random hue
         if True:
