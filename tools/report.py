@@ -2,7 +2,7 @@ import os
 import matplotlib.pyplot as plt
 from tools.predict import predict
 from dataset_scripts.metrics_eval import evaluate_detections, extract_mAP, extract_AP, get_classes
-from dataset_scripts.coco_boxes import leave_boxes, leave_boxes_scale
+from dataset_scripts.utils.coco_tools import leave_boxes
 from tqdm import tqdm
 import argparse
 import mmcv
@@ -20,7 +20,7 @@ def build_parser():
     parser.add_argument('-img-fld', '--images-folder', type=str)
     parser.add_argument('-ann', '--annotations-file', type=str)
     parser.add_argument('-area', '--area', nargs=2, type=str, default=['0**2', '1e5**2'])
-    parser.add_argument('-shape', '--shape', nargs=2, type=int)
+    parser.add_argument('-shape', '--shape', nargs=2, type=int, default=(None, None))
     parser.add_argument('-add', '--add', action='store_true')
     parser.add_argument('-dont-repredict', '--dont-repredict', dest='repredict', action='store_false')
     parser.add_argument('-mmdet-fld', '--mmdetection-folder', type=str, default='')
@@ -71,17 +71,14 @@ def write_json_dict(json_dict, w):
         json.dump(json_dict, f)
 
 
-def calculate_metrics(epochs, report_folder, annotations_file, area, shape=None):
+def calculate_metrics(epochs, report_folder, annotations_file, area, shape=(None, None)):
     metrics = list()
     # kostil' #
     indexes_to_correct = list()
     ###########
     with open(annotations_file, 'r') as f:
         annotations_dict = json.load(f)
-    if shape is None:
-        leave_boxes(annotations_dict, area)
-    else:
-        leave_boxes_scale(annotations_dict, area, shape[0], shape[1])
+    leave_boxes(annotations_dict, area=area, width=shape[0], height=shape[1])
 
     for epoch in tqdm(epochs):
         detections_file = os.path.join(report_folder, 'predictions/epoch_{}.json'.format(epoch))
@@ -94,10 +91,7 @@ def calculate_metrics(epochs, report_folder, annotations_file, area, shape=None)
             continue
         ###########
         detections_dict_with_images = {'images': annotations_dict['images'], 'annotations': detections_dict}
-        if shape is None:
-            leave_boxes(detections_dict_with_images, area)
-        else:
-            leave_boxes_scale(detections_dict_with_images, area, shape[0], shape[1])
+        leave_boxes(detections_dict_with_images, area=area, width=shape[0], height=shape[1])
         detections_dict = detections_dict_with_images['annotations']
 
         annotations_dict_r, annotations_dict_w = os.pipe()
@@ -158,7 +152,7 @@ def complete_args(config_file, set_of_data, checkpoints_folder, report_folder, i
 
 
 def report(config_file, checkpoints_folder=None, report_folder=None, images_folder=None, annotations_file=None,
-           set_of_data='val', area=(0**2, 1e5**2), shape=None, add=False, repredict=True, mmdetection_folder=''):
+           set_of_data='val', area=(0**2, 1e5**2), shape=(None, None), add=False, repredict=True, mmdetection_folder=''):
     assert set_of_data in ['train', 'val', 'test']
     checkpoints_folder, report_folder, images_folder, annotations_file = complete_args(config_file, set_of_data,
                                 checkpoints_folder, report_folder, images_folder, annotations_file, mmdetection_folder)
