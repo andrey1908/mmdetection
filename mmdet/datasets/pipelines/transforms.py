@@ -73,7 +73,8 @@ class Resize(object):
                  img_scale=None,
                  multiscale_mode='range',
                  ratio_range=None,
-                 keep_ratio=True):
+                 keep_ratio=True,
+                 jitter=0.2):
         if img_scale is None:
             self.img_scale = None
         else:
@@ -93,6 +94,7 @@ class Resize(object):
         self.multiscale_mode = multiscale_mode
         self.ratio_range = ratio_range
         self.keep_ratio = keep_ratio
+        self.jitter = jitter
 
     @staticmethod
     def random_select(img_scales):
@@ -141,14 +143,17 @@ class Resize(object):
         results['scale_idx'] = scale_idx
 
     def _resize_img(self, results):
+        h, w = results['img'].shape[:2]
+        dw = w * self.jitter
+        dh = h * self.jitter
+        new_ar = (w + np.random.uniform(-dw, dw)) / (h + np.random.uniform(-dh, -dh))
+        w = h * new_ar
         if self.keep_ratio:
-            img, scale_factor = mmcv.imrescale(
-                results['img'], results['scale'], return_scale=True)
+            scale = mmcv.rescale_size((w, h), results['scale'])
         else:
-            img, w_scale, h_scale = mmcv.imresize(
-                results['img'], results['scale'], return_scale=True)
-            scale_factor = np.array([w_scale, h_scale, w_scale, h_scale],
-                                    dtype=np.float32)
+            scale = results['scale']
+        img, w_scale, h_scale = mmcv.imresize(results['img'], scale, return_scale=True)
+        scale_factor = np.array([w_scale, h_scale, w_scale, h_scale], dtype=np.float32)
         results['img'] = img
         results['img_shape'] = img.shape
         results['pad_shape'] = img.shape  # in case that there is no padding
@@ -475,10 +480,11 @@ class PhotoMetricDistortion(object):
     2. random contrast (mode 0)
     3. convert color from BGR to HSV
     4. random saturation
-    5. random hue
-    6. convert color from HSV to BGR
-    7. random contrast (mode 1)
-    8. randomly swap channels
+    5. random exposure
+    6. random hue
+    7. convert color from HSV to BGR
+    8. random contrast (mode 1)
+    9. randomly swap channels
 
     Args:
         brightness_delta (int): delta of brightness.
@@ -502,36 +508,31 @@ class PhotoMetricDistortion(object):
     def __call__(self, results):
         img = results['img'].astype(dtype=np.single)
         # random brightness
-        if True:
-            delta = random.uniform(-self.brightness_delta, self.brightness_delta)
-            img += delta
-            np.clip(img, 0, 255, out=img)
+        delta = random.uniform(-self.brightness_delta, self.brightness_delta)
+        img += delta
+        np.clip(img, 0, 255, out=img)
 
         # mode == 0 --> do random contrast first
         # mode == 1 --> do random contrast last
         mode = random.randint(2)
         if mode == 1:
-            if True:
-                alpha = random.uniform(self.contrast_lower, self.contrast_upper)
-                img *= alpha
-                np.clip(img, 0, 255, out=img)
+            alpha = random.uniform(self.contrast_lower, self.contrast_upper)
+            img *= alpha
+            np.clip(img, 0, 255, out=img)
 
         # convert color from BGR to HSV
         img = mmcv.bgr2hsv(img)
 
         # random saturation
-        if True:
-            img[..., 1] *= random.uniform(self.saturation_lower, self.saturation_upper)
+        img[..., 1] *= random.uniform(self.saturation_lower, self.saturation_upper)
 
         # random exposure
-        if True:
-            img[..., 2] *= random.uniform(self.exposure_lower, self.exposure_upper)
+        img[..., 2] *= random.uniform(self.exposure_lower, self.exposure_upper)
 
         # random hue
-        if True:
-            img[..., 0] += random.uniform(-self.hue_delta, self.hue_delta)
-            img[..., 0][img[..., 0] > 360] -= 360
-            img[..., 0][img[..., 0] < 0] += 360
+        img[..., 0] += random.uniform(-self.hue_delta, self.hue_delta)
+        img[..., 0][img[..., 0] > 360] -= 360
+        img[..., 0][img[..., 0] < 0] += 360
 
         # convert color from HSV to BGR
         img = mmcv.hsv2bgr(img)
@@ -539,14 +540,12 @@ class PhotoMetricDistortion(object):
 
         # random contrast
         if mode == 0:
-            if True:
-                alpha = random.uniform(self.contrast_lower, self.contrast_upper)
-                img *= alpha
-                np.clip(img, 0, 255, out=img)
+            alpha = random.uniform(self.contrast_lower, self.contrast_upper)
+            img *= alpha
+            np.clip(img, 0, 255, out=img)
 
         # randomly swap channels
-        if True:
-            img = img[..., random.permutation(3)]
+        img = img[..., random.permutation(3)]
 
         results['img'] = img.astype(dtype=np.uint8)
         return results
@@ -554,10 +553,10 @@ class PhotoMetricDistortion(object):
     def __repr__(self):
         repr_str = self.__class__.__name__
         repr_str += ('(brightness_delta={}, contrast_range={}, '
-                     'saturation_range={}, hue_delta={})').format(
+                     'saturation_range={}, exposure_range={} hue_delta={})').format(
                          self.brightness_delta,
                          (self.contrast_lower, self.contrast_upper),
-                         self.saturation_range, self.hue_delta)
+                         self.saturation_range, self.exposure_range, self.hue_delta)
         return repr_str
 
 
