@@ -85,8 +85,8 @@ def add_predictions_to_coco(image_file, image_id, image_name, predictions, thres
             annotation['category_id'] = cl_id + 1
             xtl, ytl, xbr, ybr, score = map(float, predictions[cl_id][k])
             annotation['bbox'] = [max(xtl, 0), max(ytl, 0),
-                                  min(xbr, w) - max(xtl, 0),
-                                  min(ybr, h) - max(ytl, 0)]
+                                  min(xbr, w-1) - max(xtl, 0) + 1,
+                                  min(ybr, h-1) - max(ytl, 0) + 1]
             annotation['area'] = annotation['bbox'][2] * annotation['bbox'][3]
             annotation['score'] = score
             json_dict['annotations'].append(annotation)
@@ -96,7 +96,6 @@ def complete_args(config_file, set_of_data, images_folder, images_file, mmdetect
     cfg = mmcv.Config.fromfile(config_file)
     if images_folder is None:
         images_folder = os.path.join(mmdetection_folder, cfg.data[set_of_data].img_prefix)
-        # if images_folder is not None, images_file can be None
         if images_file is None:
             images_file = os.path.join(mmdetection_folder, cfg.data[set_of_data].ann_file)
     return images_folder, images_file
