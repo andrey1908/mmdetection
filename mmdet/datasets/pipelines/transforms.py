@@ -74,7 +74,7 @@ class Resize(object):
                  multiscale_mode='range',
                  ratio_range=None,
                  keep_ratio=True,
-                 jitter=0.2):
+                 jitter=0.):
         if img_scale is None:
             self.img_scale = None
         else:
@@ -320,6 +320,7 @@ class Pad(object):
         results['pad_shape'] = padded_img.shape
         results['pad_fixed_size'] = self.size
         results['pad_size_divisor'] = self.size_divisor
+        results['padding_value'] = self.pad_val
 
     def _pad_masks(self, results):
         pad_shape = results['pad_shape'][:2]
