@@ -153,7 +153,7 @@ def train_detector(model,
         defrost_backbone = DefrostBackbone(when_defrost, frozen_stages)
         runner.register_hook(defrost_backbone)
     # log hook
-    custom_log = CustomLog(cfg.data.imgs_per_gpu, when_defrost, os.path.join(cfg.work_dir, 'log.txt'))
+    custom_log = CustomLog(cfg.data.samples_per_gpu, when_defrost, os.path.join(cfg.work_dir, 'log.txt'))
     runner.register_hook(custom_log)
     # an ugly walkaround to make the .log and .log.json filenames the same
     runner.timestamp = timestamp

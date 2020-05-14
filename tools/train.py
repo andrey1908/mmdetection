@@ -64,7 +64,6 @@ def parse_args():
 
 def main():
     args = parse_args()
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.available_gpus
 
     cfg = Config.fromfile(args.config)
     if args.options is not None:
