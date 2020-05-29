@@ -145,22 +145,23 @@ class Resize(object):
         results['scale_idx'] = scale_idx
 
     def _resize_img(self, results):
-        h, w = results['img'].shape[:2]
-        dw = w * self.jitter
-        dh = h * self.jitter
-        new_ar = (w + np.random.uniform(-dw, dw)) / (h + np.random.uniform(-dh, -dh))
-        w = h * new_ar
-        if self.keep_ratio:
-            scale = mmcv.rescale_size((w, h), results['scale'])
-        else:
-            scale = results['scale']
-        img, w_scale, h_scale = mmcv.imresize(results['img'], scale, return_scale=True)
-        scale_factor = np.array([w_scale, h_scale, w_scale, h_scale], dtype=np.float32)
-        results['img'] = img
-        results['img_shape'] = img.shape
-        results['pad_shape'] = img.shape  # in case that there is no padding
-        results['scale_factor'] = scale_factor
-        results['keep_ratio'] = self.keep_ratio
+        for key in results.get('img_fields', ['img']):
+            h, w = results[key].shape[:2]
+            dw = w * self.jitter
+            dh = h * self.jitter
+            new_ar = (w + np.random.uniform(-dw, dw)) / (h + np.random.uniform(-dh, -dh))
+            w = h * new_ar
+            if self.keep_ratio:
+                scale = mmcv.rescale_size((w, h), results['scale'])
+            else:
+                scale = results['scale']
+            img, w_scale, h_scale = mmcv.imresize(results[key], scale, return_scale=True)
+            scale_factor = np.array([w_scale, h_scale, w_scale, h_scale], dtype=np.float32)
+            results[key] = img
+            results['img_shape'] = img.shape
+            results['pad_shape'] = img.shape  # in case that there is no padding
+            results['scale_factor'] = scale_factor
+            results['keep_ratio'] = self.keep_ratio
 
     def _resize_bboxes(self, results):
         img_shape = results['img_shape']
@@ -256,8 +257,9 @@ class RandomFlip(object):
             results['flip_direction'] = self.direction
         if results['flip']:
             # flip image
-            results['img'] = mmcv.imflip(
-                results['img'], direction=results['flip_direction'])
+            for key in results.get('img_fields', ['img']):
+                results[key] = mmcv.imflip(
+                    results[key], direction=results['flip_direction'])
             # flip bboxes
             for key in results.get('bbox_fields', []):
                 results[key] = self.bbox_flip(results[key],
@@ -299,12 +301,13 @@ class Pad(object):
         assert size is None or size_divisor is None
 
     def _pad_img(self, results):
-        if self.size is not None:
-            padded_img = mmcv.impad(results['img'], self.size, self.pad_val)
-        elif self.size_divisor is not None:
-            padded_img = mmcv.impad_to_multiple(
-                results['img'], self.size_divisor, pad_val=self.pad_val)
-        results['img'] = padded_img
+        for key in results.get('img_fields', ['img']):
+            if self.size is not None:
+                padded_img = mmcv.impad(results[key], self.size, self.pad_val)
+            elif self.size_divisor is not None:
+                padded_img = mmcv.impad_to_multiple(
+                    results[key], self.size_divisor, pad_val=self.pad_val)
+            results[key] = padded_img
         results['pad_shape'] = padded_img.shape
         results['pad_fixed_size'] = self.size
         results['pad_size_divisor'] = self.size_divisor
@@ -351,8 +354,9 @@ class Normalize(object):
         self.to_rgb = to_rgb
 
     def __call__(self, results):
-        results['img'] = mmcv.imnormalize(results['img'], self.mean, self.std,
-                                          self.to_rgb)
+        for key in results.get('img_fields', ['img']):
+            results[key] = mmcv.imnormalize(results[key], self.mean, self.std,
+                                            self.to_rgb)
         results['img_norm_cfg'] = dict(
             mean=self.mean, std=self.std, to_rgb=self.to_rgb)
         return results
@@ -376,18 +380,19 @@ class RandomCrop(object):
         self.crop_size = crop_size
 
     def __call__(self, results):
-        img = results['img']
-        margin_h = max(img.shape[0] - self.crop_size[0], 0)
-        margin_w = max(img.shape[1] - self.crop_size[1], 0)
-        offset_h = np.random.randint(0, margin_h + 1)
-        offset_w = np.random.randint(0, margin_w + 1)
-        crop_y1, crop_y2 = offset_h, offset_h + self.crop_size[0]
-        crop_x1, crop_x2 = offset_w, offset_w + self.crop_size[1]
+        for key in results.get('img_fields', ['img']):
+            img = results[key]
+            margin_h = max(img.shape[0] - self.crop_size[0], 0)
+            margin_w = max(img.shape[1] - self.crop_size[1], 0)
+            offset_h = np.random.randint(0, margin_h + 1)
+            offset_w = np.random.randint(0, margin_w + 1)
+            crop_y1, crop_y2 = offset_h, offset_h + self.crop_size[0]
+            crop_x1, crop_x2 = offset_w, offset_w + self.crop_size[1]
 
-        # crop the image
-        img = img[crop_y1:crop_y2, crop_x1:crop_x2, ...]
-        img_shape = img.shape
-        results['img'] = img
+            # crop the image
+            img = img[crop_y1:crop_y2, crop_x1:crop_x2, ...]
+            img_shape = img.shape
+            results[key] = img
         results['img_shape'] = img_shape
 
         # crop bboxes accordingly and clip to the image boundary
@@ -483,48 +488,59 @@ class PhotoMetricDistortion(object):
         self.hue_delta = hue_delta
 
     def __call__(self, results):
-        img = results['img'].astype(dtype=np.single)
+        img = results['img']
+        assert img.dtype == np.float32, \
+            'PhotoMetricDistortion needs the input image of dtype np.float32,' \
+            ' please set "to_float32=True" in "LoadImageFromFile" pipeline'
         # random brightness
-        delta = random.uniform(-self.brightness_delta, self.brightness_delta)
-        img += delta
-        np.clip(img, 0, 255, out=img)
+        if random.randint(2):
+            delta = random.uniform(-self.brightness_delta,
+                                   self.brightness_delta)
+            img += delta
 
         # mode == 0 --> do random contrast first
         # mode == 1 --> do random contrast last
         mode = random.randint(2)
         if mode == 1:
-            alpha = random.uniform(self.contrast_lower, self.contrast_upper)
-            img *= alpha
-            np.clip(img, 0, 255, out=img)
+            if random.randint(2):
+                alpha = random.uniform(self.contrast_lower,
+                                       self.contrast_upper)
+                img *= alpha
 
         # convert color from BGR to HSV
         img = mmcv.bgr2hsv(img)
 
         # random saturation
-        img[..., 1] *= random.uniform(self.saturation_lower, self.saturation_upper)
+        if random.randint(2):
+            img[..., 1] *= random.uniform(self.saturation_lower,
+                                          self.saturation_upper)
 
         # random exposure
-        img[..., 2] *= random.uniform(self.exposure_lower, self.exposure_upper)
+        if random.randint(2):
+            img[..., 2] *= random.uniform(self.exposure_lower,
+                                          self.exposure_upper)
 
         # random hue
-        img[..., 0] += random.uniform(-self.hue_delta, self.hue_delta)
-        img[..., 0][img[..., 0] > 360] -= 360
-        img[..., 0][img[..., 0] < 0] += 360
+        if random.randint(2):
+            img[..., 0] += random.uniform(-self.hue_delta, self.hue_delta)
+            img[..., 0][img[..., 0] > 360] -= 360
+            img[..., 0][img[..., 0] < 0] += 360
 
         # convert color from HSV to BGR
         img = mmcv.hsv2bgr(img)
-        np.clip(img, 0, 255, out=img)
 
         # random contrast
         if mode == 0:
-            alpha = random.uniform(self.contrast_lower, self.contrast_upper)
-            img *= alpha
-            np.clip(img, 0, 255, out=img)
+            if random.randint(2):
+                alpha = random.uniform(self.contrast_lower,
+                                       self.contrast_upper)
+                img *= alpha
 
         # randomly swap channels
-        img = img[..., random.permutation(3)]
+        if random.randint(2):
+            img = img[..., random.permutation(3)]
 
-        results['img'] = img.astype(dtype=np.uint8)
+        results['img'] = img
         return results
 
     def __repr__(self):
