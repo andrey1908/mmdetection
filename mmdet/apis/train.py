@@ -189,7 +189,7 @@ def train_detector(model,
         runner.register_hook(eval_hook(val_dataloader, **eval_cfg))
 
     if cfg.resume_from:
-        runner.resume(cfg.resume_from)
+        runner.resume(cfg.resume_from, map_location=lambda storage, loc: storage.cuda(cfg.gpu_ids[0]))
     elif cfg.load_from:
-        runner.load_checkpoint(cfg.load_from)
+        runner.load_checkpoint(cfg.load_from, map_location=lambda storage, loc: storage.cuda(cfg.gpu_ids[0]))
     runner.run(data_loaders, cfg.workflow, cfg.total_epochs)

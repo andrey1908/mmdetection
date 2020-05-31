@@ -58,12 +58,14 @@ def get_checkpoint_files(checkpoints_folder, existing_epochs):
     return checkpoint_files, epochs
 
 
-def run_models(config_file, checkpoint_files, epochs, report_folder, images_folder, annotations_file, repredict=True):
+def run_models(config_file, checkpoint_files, epochs, report_folder, images_folder, annotations_file, repredict=True,
+               gpu=0):
     for checkpoint_file, epoch in tqdm(list(zip(checkpoint_files, epochs))):
         out_file = os.path.join(report_folder, 'predictions', 'epoch_{}.json'.format(epoch))
         if os.path.exists(out_file) and not repredict:
             continue
-        predict(config_file, checkpoint_file, out_file, detections_only=True, images_folder=images_folder, images_file=annotations_file)
+        predict(config_file, checkpoint_file, out_file, detections_only=True, images_folder=images_folder,
+                images_file=annotations_file, gpu=gpu)
 
 
 def write_json_dict(json_dict, w):
@@ -152,7 +154,8 @@ def complete_args(config_file, set_of_data, checkpoints_folder, report_folder, i
 
 
 def report(config_file, checkpoints_folder=None, report_folder=None, images_folder=None, annotations_file=None,
-           set_of_data='val', area=(0**2, 1e5**2), shape=(None, None), add=False, repredict=True, mmdetection_folder=''):
+           set_of_data='val', area=(0**2, 1e5**2), shape=(None, None), add=False, repredict=True, gpu=0,
+           mmdetection_folder=''):
     assert set_of_data in ['train', 'val', 'test']
     checkpoints_folder, report_folder, images_folder, annotations_file = complete_args(config_file, set_of_data,
                                 checkpoints_folder, report_folder, images_folder, annotations_file, mmdetection_folder)
@@ -164,7 +167,7 @@ def report(config_file, checkpoints_folder=None, report_folder=None, images_fold
         existing_epochs, existing_metrics = list(), list()
     create_folders(report_folder)
     checkpoint_files, epochs = get_checkpoint_files(checkpoints_folder, existing_epochs)
-    run_models(config_file, checkpoint_files, epochs, report_folder, images_folder, annotations_file, repredict)
+    run_models(config_file, checkpoint_files, epochs, report_folder, images_folder, annotations_file, repredict, gpu)
     metrics, classes = calculate_metrics(epochs, report_folder, annotations_file, area, shape)
     epochs += existing_epochs
     metrics += existing_metrics
@@ -175,8 +178,6 @@ def report(config_file, checkpoints_folder=None, report_folder=None, images_fold
 if __name__ == '__main__':
     parser = build_parser()
     args = parser.parse_args()
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
     args.area = list(map(eval, args.area))
     kwargs = vars(args)
-    kwargs.pop('gpu')
     report(**kwargs)

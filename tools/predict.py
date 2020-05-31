@@ -102,10 +102,10 @@ def complete_args(config_file, set_of_data, images_folder, images_file, mmdetect
 
 
 def predict(config_file, checkpoint_file, out_file=None, detections_only=False, set_of_data='val',
-            images_folder=None, images_file=None, threshold=0., mmdetection_folder=''):
+            images_folder=None, images_file=None, threshold=0., gpu=0, mmdetection_folder=''):
     assert set_of_data in ['train', 'val', 'test']
     images_folder, images_file = complete_args(config_file, set_of_data, images_folder, images_file, mmdetection_folder)
-    model = init_detector(config_file, checkpoint_file, device='cuda:0')
+    model = init_detector(config_file, checkpoint_file, device=gpu)
     classes = model.CLASSES
     images_names, images_ids, images_files = get_images(images_folder, images_file)
     json_dict = init_coco(classes)
@@ -123,7 +123,5 @@ def predict(config_file, checkpoint_file, out_file=None, detections_only=False, 
 if __name__ == '__main__':
     parser = build_parser()
     args = parser.parse_args()
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
     kwargs = vars(args)
-    kwargs.pop('gpu')
     predict(**kwargs)
