@@ -8,7 +8,6 @@ import argparse
 import mmcv
 import csv
 import json
-import threading
 
 
 def build_parser():
@@ -68,11 +67,6 @@ def run_models(config_file, checkpoint_files, epochs, report_folder, images_fold
                 images_file=annotations_file, threshold=0.001, nms=0.45, max_dets=1000, gpu=gpu)
 
 
-def write_json_dict(json_dict, w):
-    with open(w, 'w') as f:
-        json.dump(json_dict, f)
-
-
 def calculate_metrics(epochs, report_folder, annotations_file, area=(0**2, 1e5**2), shape=(None, None)):
     metrics = list()
     # kostil' #
@@ -96,13 +90,7 @@ def calculate_metrics(epochs, report_folder, annotations_file, area=(0**2, 1e5**
         leave_boxes(detections_dict_with_images, area=area, width=shape[0], height=shape[1])
         detections_dict = detections_dict_with_images['annotations']
 
-        annotations_dict_r, annotations_dict_w = os.pipe()
-        annotations_dict_writing = threading.Thread(target=write_json_dict, args=(annotations_dict, annotations_dict_w))
-        annotations_dict_writing.start()
-        detections_dict_r, detections_dict_w = os.pipe()
-        detections_dict_writing = threading.Thread(target=write_json_dict, args=(detections_dict, detections_dict_w))
-        detections_dict_writing.start()
-        results = evaluate_detections(annotations_dict_r, detections_dict_r)
+        results = evaluate_detections(annotations_dict, detections_dict)
         classes = get_classes(results)
         metric = [extract_mAP(results)]
         metric += extract_AP(results, classes)
