@@ -65,7 +65,7 @@ def run_models(config_file, checkpoint_files, epochs, report_folder, images_fold
         if os.path.exists(out_file) and not repredict:
             continue
         predict(config_file, checkpoint_file, out_file, detections_only=True, images_folder=images_folder,
-                images_file=annotations_file, gpu=gpu)
+                images_file=annotations_file, threshold=0.001, nms=0.45, max_dets=1000, gpu=gpu)
 
 
 def write_json_dict(json_dict, w):
@@ -73,7 +73,7 @@ def write_json_dict(json_dict, w):
         json.dump(json_dict, f)
 
 
-def calculate_metrics(epochs, report_folder, annotations_file, area, shape=(None, None)):
+def calculate_metrics(epochs, report_folder, annotations_file, area=(0**2, 1e5**2), shape=(None, None)):
     metrics = list()
     # kostil' #
     indexes_to_correct = list()

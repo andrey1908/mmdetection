@@ -201,3 +201,8 @@ class TwoStageDetector(BaseDetector, RPNTestMixin):
         proposal_list = self.aug_test_rpn(x, img_metas)
         return self.roi_head.aug_test(
             x, proposal_list, img_metas, rescale=rescale)
+
+    def set_test_parameters(self, threshold=0.05, nms=0.5, max_dets=100):
+        self.test_cfg.rcnn.score_thr = threshold
+        self.test_cfg.rcnn.nms['iou_thr'] = nms
+        self.test_cfg.rcnn.max_per_img = max_dets

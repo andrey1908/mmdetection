@@ -16,7 +16,9 @@ def build_parser():
     parser.add_argument('-dets-only', '--detections-only', action='store_true')
     parser.add_argument('-img-fld', '--images-folder', type=str)
     parser.add_argument('-img', '--images-file', type=str)
-    parser.add_argument('-thr', '--threshold', type=float, default=0.)
+    parser.add_argument('-thr', '--threshold', type=float, default=0.001)
+    parser.add_argument('-nms', '--nms', type=float, default=0.5)
+    parser.add_argument('-max-dets', '--max-dets', type=int, default=1000)
     parser.add_argument('-mmdet-fld', '--mmdetection-folder', type=str, default='')
     parser.add_argument('-gpu', '--gpu', type=int, default=0)
     return parser
@@ -61,7 +63,7 @@ def init_coco(classes):
     return json_dict
 
 
-def add_predictions_to_coco(image_file, image_id, image_name, predictions, threshold, json_dict):
+def add_predictions_to_coco(image_file, image_id, image_name, predictions, json_dict):
     image = dict()
     image['id'] = image_id
     image['file_name'] = image_name
@@ -73,8 +75,6 @@ def add_predictions_to_coco(image_file, image_id, image_name, predictions, thres
     num_classes = len(json_dict['categories'])
     for cl_id in range(num_classes):
         for k in range(len(predictions[cl_id])):
-            if predictions[cl_id][k][4] < threshold:
-                continue
             annotation = dict()
             if len(json_dict['annotations']) == 0:
                 annotation['id'] = 1
@@ -102,16 +102,17 @@ def complete_args(config_file, set_of_data, images_folder, images_file, mmdetect
 
 
 def predict(config_file, checkpoint_file, out_file=None, detections_only=False, set_of_data='val',
-            images_folder=None, images_file=None, threshold=0., gpu=0, mmdetection_folder=''):
+            images_folder=None, images_file=None, threshold=0.001, nms=0.45, max_dets=1000, gpu=0, mmdetection_folder=''):
     assert set_of_data in ['train', 'val', 'test']
     images_folder, images_file = complete_args(config_file, set_of_data, images_folder, images_file, mmdetection_folder)
     model = init_detector(config_file, checkpoint_file, device=gpu)
+    model.set_test_parameters(threshold=threshold, nms=nms, max_dets=max_dets)
     classes = model.CLASSES
     images_names, images_ids, images_files = get_images(images_folder, images_file)
     json_dict = init_coco(classes)
     for image_name, image_id, image_file in tqdm(list(zip(images_names, images_ids, images_files))):
         predictions = inference_detector(model, image_file)
-        add_predictions_to_coco(image_file, image_id, image_name, predictions, threshold, json_dict)
+        add_predictions_to_coco(image_file, image_id, image_name, predictions, json_dict)
     if detections_only:
         json_dict = json_dict['annotations']
     if out_file:
