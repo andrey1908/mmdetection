@@ -64,7 +64,7 @@ def run_models(config_file, checkpoint_files, epochs, report_folder, images_fold
         if os.path.exists(out_file) and not repredict:
             continue
         predict(config_file, checkpoint_file, out_file, detections_only=True, images_folder=images_folder,
-                images_file=annotations_file, threshold=0.001, nms=0.45, max_dets=1000, gpu=gpu)
+                images_file=annotations_file, threshold=0.01, nms=0.45, max_dets=100, gpu=gpu)
 
 
 def calculate_metrics(epochs, report_folder, annotations_file, area=(0**2, 1e5**2), shape=(None, None)):
