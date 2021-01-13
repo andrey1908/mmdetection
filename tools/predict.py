@@ -111,6 +111,7 @@ def predict(config_file, checkpoint_file, out_file=None, detections_only=False, 
     images_names, images_ids, images_files = get_images(images_folder, images_file)
     json_dict = init_coco(classes)
     for image_name, image_id, image_file in tqdm(list(zip(images_names, images_ids, images_files))):
+        #TODO inference_detector initilizes test pipeline every time it is called. It may slow code performance.
         predictions = inference_detector(model, image_file)
         add_predictions_to_coco(image_file, image_id, image_name, predictions, json_dict)
     if detections_only:
